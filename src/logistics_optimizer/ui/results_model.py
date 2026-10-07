@@ -20,6 +20,7 @@ ERRORS = "errors"
 
 @dataclass(frozen=True, slots=True)
 class Column:
+    key: str
     title: str
     numeric: bool = False
     width: int = 110
@@ -27,23 +28,28 @@ class Column:
     tip: str = ""
 
 
+# Главное помещается в окно без прокрутки, справочные колонки идут правее.
 COLUMNS = (
-    Column("Группа / получатель", width=270),
-    Column("Город", width=170),
-    Column("Дата ППС", width=110, tip="Дата, по которой заказы объединяются в рейсы"),
-    Column("Отгрузка", width=110),
-    Column("Паллет", numeric=True, width=70),
-    Column("Вес, кг", numeric=True, width=85),
-    Column("Способ", width=140),
-    Column("Транспорт", width=130),
-    Column("Стоимость", numeric=True, width=110),
-    Column("Паллетами", numeric=True, width=110, tip="Сколько стоила бы паллетная доставка"),
-    Column("Экономия", numeric=True, width=100, tip="Против доставки каждого заказа отдельно"),
-    Column("Заказ №", width=90),
-    Column("Адрес доставки", width=260),
-    Column("Адрес тр. отдела", width=220, hidden=True),
+    Column("name", "Группа / получатель", width=236),
+    Column("city", "Город", width=136),
+    Column("date", "Дата ППС", width=112, tip="Дата, по которой заказы объединяются в рейсы"),
+    Column("pallets", "Паллет", numeric=True, width=58),
+    Column("weight", "Вес, кг", numeric=True, width=72),
+    Column("method", "Способ", width=128),
+    Column("transport", "Транспорт", width=108),
+    Column("cost", "Стоимость", numeric=True, width=104),
+    Column("savings", "Экономия", numeric=True, width=100, tip="Против доставки по отдельности"),
+    Column("pallet_cost", "Паллетами", numeric=True, width=104, tip="Цена паллетной доставки"),
+    Column("shipment", "Отгрузка", width=112),
+    Column("order_num", "Заказ №", width=84),
+    Column("address", "Адрес доставки", width=260),
+    Column("depot", "Адрес тр. отдела", width=220, hidden=True),
 )
-METHOD_COLUMN = 6
+METHOD_COLUMN = next(i for i, column in enumerate(COLUMNS) if column.key == "method")
+
+
+def _ordered(cells: dict[str, QStandardItem]) -> list[QStandardItem]:
+    return [cells[column.key] for column in COLUMNS]
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,73 +115,74 @@ def _order_row(order: Order, res: OrderResult | None, in_group: bool) -> list[QS
     name.setToolTip(order.recipient or "")
     address = _cell(order.delivery_address)
     address.setToolTip(order.delivery_address)
-    row = [
-        name,
-        _cell(order.city),
-        _cell(fmt.day(order.date), order.date.toordinal() if order.date else 0),
-        _cell(
+    cells = {
+        "name": name,
+        "city": _cell(order.city),
+        "date": _cell(fmt.day(order.date), order.date.toordinal() if order.date else 0),
+        "pallets": _cell(fmt.quantity(order.pallets), order.pallets, numeric=True),
+        "weight": _cell(fmt.number(order.weight), order.weight, numeric=True),
+        "method": _cell(""),
+        "transport": _cell(""),
+        "cost": _money_cell(None),
+        "savings": _money_cell(None),
+        "pallet_cost": _money_cell(None),
+        "shipment": _cell(
             fmt.day(order.shipment_date),
             order.shipment_date.toordinal() if order.shipment_date else 0,
         ),
-        _cell(fmt.quantity(order.pallets), order.pallets, numeric=True),
-        _cell(fmt.number(order.weight), order.weight, numeric=True),
-    ]
-    if res is None:
-        row += [_cell(""), _cell(""), _money_cell(None), _money_cell(None)]
-    else:
+        "order_num": _cell(order.order_num),
+        "address": address,
+        "depot": _cell(order.transport_address or ""),
+    }
+    if res is not None:
         method = _cell("" if in_group else res.method.label)
         method.setData(res.method.value, METHOD_ROLE)
         if res.is_error:
             method.setToolTip(res.method.value)
-        row += [
-            method,
-            _cell("" if in_group else _transport(res)),
-            _money_cell(None if res.is_error else res.cost),
-            _money_cell(res.pallet_cost),
-        ]
-    row += [
-        _money_cell(None),
-        _cell(order.order_num),
-        address,
-        _cell(order.transport_address or ""),
-    ]
-    return row
+        cells["method"] = method
+        cells["transport"] = _cell("" if in_group else _transport(res))
+        cells["cost"] = _money_cell(None if res.is_error else res.cost)
+        cells["pallet_cost"] = _money_cell(res.pallet_cost)
+    return _ordered(cells)
 
 
 def _group_row(group: Group, orders: Sequence[Order], colors: Palette) -> list[QStandardItem]:
     dates = [order.date for order in orders if order.date]
     shipments = [order.shipment_date for order in orders if order.shipment_date]
-    cities = list(dict.fromkeys(order.city for order in sorted(orders, key=_by_date)))
+    cities = list(dict.fromkeys(order.city for order in orders))
+    pallets = sum(order.pallets for order in orders)
+    weight = sum(order.weight for order in orders)
     count = fmt.plural(len(orders), "заказ", "заказа", "заказов")
     title = _cell(f"Группа {group.id} · {count}", f" {group.id:06d}")  # группы идут первыми
     title.setData(group.id, GROUP_ROLE)
+    route = _cell(" → ".join(cities))
+    route.setToolTip(" → ".join(cities))
     method = _cell(group.method.label)
     method.setData(group.method.value, METHOD_ROLE)
-    savings = group.savings if group.savings > 0.005 else None
-    savings_cell = _money_cell(savings)
-    savings_cell.setForeground(QBrush(QColor(colors.good)))
-    row = [
-        title,
-        _cell(" → ".join(cities)),
-        _cell(fmt.day_range(dates), min(dates).toordinal() if dates else 0),
-        _cell(fmt.day_range(shipments), min(shipments).toordinal() if shipments else 0),
-        _cell(fmt.quantity(sum(o.pallets for o in orders)), sum(o.pallets for o in orders), True),
-        _cell(fmt.number(sum(o.weight for o in orders)), sum(o.weight for o in orders), True),
-        method,
-        _cell(str(group.trucks).replace(" x ", " × ")),
-        _money_cell(group.cost),
-        _money_cell(group.pallet_cost),
-        savings_cell,
-        _cell(""),
-        _cell(""),
-        _cell(""),
-    ]
+    savings = _money_cell(group.savings if group.savings > 0.005 else None)
+    savings.setForeground(QBrush(QColor(colors.good)))
+    cells = {
+        "name": title,
+        "city": route,
+        "date": _cell(fmt.day_range(dates), min(dates).toordinal() if dates else 0),
+        "pallets": _cell(fmt.quantity(pallets), pallets, numeric=True),
+        "weight": _cell(fmt.number(weight), weight, numeric=True),
+        "method": method,
+        "transport": _cell(str(group.trucks).replace(" x ", " × ")),
+        "cost": _money_cell(group.cost),
+        "savings": savings,
+        "pallet_cost": _money_cell(group.pallet_cost),
+        "shipment": _cell(fmt.day_range(shipments), min(shipments).toordinal() if shipments else 0),
+        "order_num": _cell(""),
+        "address": _cell(""),
+        "depot": _cell(""),
+    }
     bold = QFont()
     bold.setWeight(QFont.Weight.DemiBold)
-    for item in row:
+    for item in cells.values():
         item.setBackground(QBrush(QColor(colors.group_bg)))
         item.setFont(bold)
-    return row
+    return _ordered(cells)
 
 
 def _by_date(order: Order) -> tuple[int, int]:
@@ -202,7 +209,9 @@ def build_model(
         return model, facts
 
     for group in result.groups:
-        members = sorted((result.results[i] for i in group.indices), key=lambda r: _by_date(r.order))
+        members = sorted(
+            (result.results[i] for i in group.indices), key=lambda r: _by_date(r.order)
+        )
         group_orders = [res.order for res in members]
         row = _group_row(group, group_orders, colors)
         for res in members:

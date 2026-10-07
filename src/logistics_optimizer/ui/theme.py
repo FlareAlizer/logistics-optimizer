@@ -140,6 +140,15 @@ QComboBox QAbstractItemView {{
     selection-background-color: {selection}; selection-color: {text};
 }}
 QCheckBox {{ spacing: 8px; }}
+QCheckBox::indicator {{
+    width: 15px; height: 15px; border: 1px solid {muted}; border-radius: 4px;
+    background: {surface};
+}}
+QCheckBox::indicator:checked {{ background: {accent}; border-color: {accent}; }}
+QCheckBox::indicator:disabled {{ border-color: {border}; }}
+QPlainTextEdit {{
+    background: {surface}; border: 1px solid {border}; border-radius: 10px; padding: 8px;
+}}
 
 QProgressBar {{
     background: {border}; border: none; border-radius: 3px; max-height: 6px; min-height: 6px;
@@ -163,7 +172,9 @@ QTableCornerButton::section {{ background: {surface}; border: none; }}
 
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
 QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px; }}
-QScrollBar::handle {{ background: {border}; border-radius: 3px; min-height: 28px; min-width: 28px; }}
+QScrollBar::handle {{
+    background: {border}; border-radius: 3px; min-height: 28px; min-width: 28px;
+}}
 QScrollBar::handle:hover {{ background: {muted}; }}
 QScrollBar::add-line, QScrollBar::sub-line {{ width: 0; height: 0; }}
 QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
@@ -214,9 +225,7 @@ def apply_theme(app: QApplication, name: str) -> Palette:
     }
     for role, value in roles.items():
         palette.setColor(role, QColor(value))
-    palette.setColor(
-        QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(colors.muted)
-    )
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(colors.muted))
     palette.setColor(
         QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(colors.muted)
     )

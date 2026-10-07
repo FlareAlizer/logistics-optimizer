@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QAbstractSpinBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -37,6 +38,7 @@ def _spin(value: int, low: int, high: int, suffix: str = "") -> QSpinBox:
     box.setValue(value)
     box.setSuffix(suffix)
     box.setGroupSeparatorShown(True)
+    box.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
     return box
 
 
@@ -48,6 +50,7 @@ def _real(value: float, low: float, high: float, step: float, digits: int, suffi
     box.setValue(value)
     box.setSuffix(suffix)
     box.setGroupSeparatorShown(True)
+    box.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
     return box
 
 
@@ -241,8 +244,12 @@ class ColumnsDialog(QDialog):
         layout.addWidget(_title("Колонки файла заказов"))
         layout.addWidget(_note(intro))
         layout.addLayout(form)
-        layout.addWidget(_note("* без этих колонок расчёт невозможен. Если отдельной даты ППС "
-                               "нет, достаточно выбрать дату отгрузки."))
+        layout.addWidget(
+            _note(
+                "* без этих колонок расчёт невозможен. Если отдельной даты ППС "
+                "нет, достаточно выбрать дату отгрузки."
+            )
+        )
         layout.addWidget(self.error)
         layout.addWidget(buttons)
 
@@ -266,7 +273,7 @@ class GroupDialog(QDialog):
     def __init__(self, group: Group, result: AnalysisResult, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle(f"Группа {group.id}")
-        self.resize(980, 520)
+        self.resize(1120, 540)
         members = sorted(
             (result.results[i] for i in group.indices),
             key=lambda res: (res.order.date is None, res.order.date, res.order.index),
@@ -300,10 +307,26 @@ class GroupDialog(QDialog):
         facts.setColumnStretch(1, 1)
         facts.setColumnStretch(3, 1)
 
-        headers = ["Заказ №", "Получатель", "Город", "Дата ППС", "Отгрузка", "Паллет", "Вес, кг",
-                   "Доля стоимости", "Паллетами", "Адрес доставки"]
+        headers = [
+            "Заказ №",
+            "Получатель",
+            "Город",
+            "Дата ППС",
+            "Отгрузка",
+            "Паллет",
+            "Вес, кг",
+            "Стоимость",
+            "Паллетами",
+            "Адрес доставки",
+        ]
+        numeric = {5, 6, 7, 8}
         table = QTableWidget(len(members), len(headers))
         table.setHorizontalHeaderLabels(headers)
+        for column in range(len(headers)):
+            side = Qt.AlignmentFlag.AlignRight if column in numeric else Qt.AlignmentFlag.AlignLeft
+            table.horizontalHeaderItem(column).setTextAlignment(
+                side | Qt.AlignmentFlag.AlignVCenter
+            )
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -312,20 +335,20 @@ class GroupDialog(QDialog):
         for row, res in enumerate(members):
             order = res.order
             values = [
-                (order.order_num, False),
-                (order.recipient or fmt.DASH, False),
-                (order.city, False),
-                (fmt.day(order.date), False),
-                (fmt.day(order.shipment_date), False),
-                (fmt.quantity(order.pallets), True),
-                (fmt.number(order.weight), True),
-                (fmt.money(res.cost, 2), True),
-                (fmt.money(res.pallet_cost, 2), True),
-                (order.delivery_address, False),
+                order.order_num,
+                order.recipient or fmt.DASH,
+                order.city,
+                fmt.day(order.date),
+                fmt.day(order.shipment_date),
+                fmt.quantity(order.pallets),
+                fmt.number(order.weight),
+                fmt.money(res.cost, 2),
+                fmt.money(res.pallet_cost, 2),
+                order.delivery_address,
             ]
-            for column, (text, numeric) in enumerate(values):
+            for column, text in enumerate(values):
                 item = QTableWidgetItem(text)
-                if numeric:
+                if column in numeric:
                     item.setTextAlignment(
                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
                     )

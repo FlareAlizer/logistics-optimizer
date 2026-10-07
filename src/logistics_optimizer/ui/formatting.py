@@ -53,6 +53,8 @@ def day_range(days: list[date]) -> str:
     first, last = min(days), max(days)
     if first == last:
         return day(first)
+    if (first.year, first.month) == (last.year, last.month):
+        return f"{first.strftime('%d')}–{last.strftime('%d.%m.%Y')}"
     return f"{first.strftime('%d.%m')}–{last.strftime('%d.%m.%Y')}"
 
 
