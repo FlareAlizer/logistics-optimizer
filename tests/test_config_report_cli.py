@@ -103,7 +103,8 @@ def test_orders_frame_keeps_legacy_columns(result):
     assert frame["Стоимость"].tolist()[:4] == [25000, 25000, 7600, 3900]
     assert pd.isna(frame["Стоимость"].iloc[4])
     assert pd.isna(frame["Паллетная стоимость"].iloc[3])  # для Москвы паллетной доставки нет
-    assert frame["Паллетная стоимость"].iloc[0] == 11 * 3800  # своя, а не сумма по группе
+    # У заказа своя паллетная стоимость, сумма по группе лежит в строке группы.
+    assert frame["Паллетная стоимость"].iloc[0] == 11 * 3800
 
 
 def test_groups_frame(result):

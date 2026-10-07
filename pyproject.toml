@@ -8,7 +8,6 @@ version = "2.0.0"
 description = "Группировка заказов в общие рейсы и расчёт стоимости доставки"
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
 dependencies = [
     "pandas>=2.2",
     "openpyxl>=3.1",

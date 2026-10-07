@@ -24,7 +24,6 @@ def main() -> int:
     logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(message)s")
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
-    app.setOrganizationName(APP_NAME)
     window = MainWindow(config_dir())
     window.show()
     return app.exec()

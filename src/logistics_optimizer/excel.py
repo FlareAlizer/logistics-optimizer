@@ -208,7 +208,7 @@ def tariffs_from_frames(direct: pd.DataFrame, pallet: pd.DataFrame) -> Tariffs:
         key = city_key(_text(city))
         if key and key not in pallet_rates:
             pallet_rates[key] = prices[row]
-    # Пустая цена за паллету значит «тарифа нет», а не «бесплатно».
+    # Пустая цена за паллету: тарифа нет. Считать её нулём нельзя.
     pallet_rates = {key: price for key, price in pallet_rates.items() if price != math.inf}
     return Tariffs(direct_rates, pallet_rates)
 
