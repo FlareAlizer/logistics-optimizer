@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "logistics-optimizer"
+version = "2.0.0"
+description = "Группировка заказов в общие рейсы и расчёт стоимости доставки"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "pandas>=2.2",
+    "openpyxl>=3.1",
+    "PyQt6>=6.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+build = [
+    "pyinstaller>=6.6",
+]
+
+[project.scripts]
+logistics-optimizer = "logistics_optimizer.cli:main"
+
+[project.gui-scripts]
+logistics-optimizer-gui = "logistics_optimizer.ui.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/logistics_optimizer"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "RUF"]
+ignore = [
+    "RUF001", # в строках интерфейса кириллица, это не опечатки
+    "RUF002",
+    "RUF003",
+]
+

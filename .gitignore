@@ -1,0 +1,24 @@
+# окружение и кэши
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# сборка
+build/
+dist/
+*.spec
+
+# рабочие файлы: реальные выгрузки в репозиторий не кладём
+*.xlsx
+*.xls
+!examples/*.xlsx
+~$*
+result*.xlsx
+settings.json
+
+# редакторы
+.idea/
+.vscode/
